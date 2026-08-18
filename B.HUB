@@ -1,0 +1,223 @@
+-- B.HUB Script for Roblox
+-- Place this script in StarterPlayer -> StarterPlayerScripts as a LocalScript
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local RootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- State Variables
+local NoclipEnabled = false
+local WallClimbEnabled = false
+local InvisibleEnabled = false
+local DefaultWalkSpeed = 16
+local DefaultJumpPower = 50
+
+-- Create ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "BHUB_GUI"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 320, 0, 420)
+MainFrame.Position = UDim2.new(0.5, -160, 0.5, -210)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 35)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Parent = ScreenGui
+
+-- Title
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 40)
+Title.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
+Title.Text = "B.HUB"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.TextSize = 22
+Title.Font = Enum.Font.SourceSansBold
+Title.Parent = MainFrame
+
+-- UI Layout Container
+local Scroll = Instance.new("ScrollingFrame")
+Scroll.Size = UDim2.new(1, -20, 1, -50)
+Scroll.Position = UDim2.new(0, 10, 0, 45)
+Scroll.BackgroundTransparency = 1
+Scroll.CanvasSize = UDim2.new(0, 0, 0, 480)
+Scroll.ScrollBarThickness = 6
+Scroll.Parent = MainFrame
+
+local UIList = Instance.new("UIListLayout")
+UIList.Parent = Scroll
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 8)
+
+-- Helper Helper to create Buttons
+local function createButton(text, callback)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(1, -10, 0, 35)
+	btn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	btn.Text = text
+	btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+	btn.Font = Enum.Font.SourceSans
+	btn.TextSize = 16
+	btn.Parent = Scroll
+	btn.MouseButton1Click:Connect(callback)
+	return btn
+end
+
+-- 1. Run (Adjustable Speed)
+local SpeedBox = Instance.new("TextBox")
+SpeedBox.Size = UDim2.new(1, -10, 0, 35)
+SpeedBox.PlaceholderText = "Set Walk Speed (Default: 16)"
+SpeedBox.Text = ""
+SpeedBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+SpeedBox.Font = Enum.Font.SourceSans
+SpeedBox.TextSize = 16
+SpeedBox.Parent = Scroll
+
+SpeedBox.FocusLost:Connect(function()
+	local val = tonumber(SpeedBox.Text)
+	if val then
+		Humanoid.WalkSpeed = val
+	else
+		Humanoid.WalkSpeed = DefaultWalkSpeed
+	end
+end)
+
+-- 2. High Jump
+local JumpBox = Instance.new("TextBox")
+JumpBox.Size = UDim2.new(1, -10, 0, 35)
+JumpBox.PlaceholderText = "Set Jump Power (Default: 50)"
+JumpBox.Text = ""
+JumpBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+JumpBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+JumpBox.Font = Enum.Font.SourceSans
+JumpBox.TextSize = 16
+JumpBox.Parent = Scroll
+
+JumpBox.FocusLost:Connect(function()
+	local val = tonumber(JumpBox.Text)
+	if val then
+		Humanoid.UseJumpPower = true
+		Humanoid.JumpPower = val
+	else
+		Humanoid.JumpPower = DefaultJumpPower
+	end
+end)
+
+-- 3. Through the Wall (Noclip)
+local NoclipBtn = createButton("Through the Wall: OFF", function() end)
+NoclipBtn.MouseButton1Click:Connect(function()
+	NoclipEnabled = not NoclipEnabled
+	if NoclipEnabled then
+		NoclipBtn.Text = "Through the Wall: ON"
+		NoclipBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+	else
+		NoclipBtn.Text = "Through the Wall: OFF"
+		NoclipBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	end
+end)
+
+RunService.Stepped:Connect(function()
+	if NoclipEnabled and LocalPlayer.Character then
+		for _, part in pairs(LocalPlayer.Character:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
+end)
+
+-- 4. Climbing the Wall
+local ClimbBtn = createButton("Wall Climb: OFF", function() end)
+ClimbBtn.MouseButton1Click:Connect(function()
+	WallClimbEnabled = not WallClimbEnabled
+	if WallClimbEnabled then
+		ClimbBtn.Text = "Wall Climb: ON"
+		ClimbBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+	else
+		ClimbBtn.Text = "Wall Climb: OFF"
+		ClimbBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	end
+end)
+
+RunService.RenderStepped:Connect(function()
+	if WallClimbEnabled and Character and RootPart then
+		local ray = Ray.new(RootPart.Position, RootPart.CFrame.LookVector * 2.5)
+		local part = workspace:FindPartOnRay(ray, Character)
+		if part then
+			RootPart.Velocity = Vector3.new(RootPart.Velocity.X, 35, RootPart.Velocity.Z)
+		end
+	end
+end)
+
+-- 5. Become Invisible (Local Side)
+local InvisBtn = createButton("Invisibility: OFF", function() end)
+InvisBtn.MouseButton1Click:Connect(function()
+	InvisibleEnabled = not InvisibleEnabled
+	local trans = InvisibleEnabled and 1 or 0
+	
+	for _, part in pairs(Character:GetDescendants()) do
+		if part:IsA("BasePart") or part:IsA("Decal") then
+			if part.Name ~= "HumanoidRootPart" then
+				part.Transparency = trans
+			end
+		end
+	end
+
+	if InvisibleEnabled then
+		InvisBtn.Text = "Invisibility: ON"
+		InvisBtn.BackgroundColor3 = Color3.fromRGB(0, 150, 80)
+	else
+		InvisBtn.Text = "Invisibility: OFF"
+		InvisBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+	end
+end)
+
+-- 6. Warp to Player
+local TargetBox = Instance.new("TextBox")
+TargetBox.Size = UDim2.new(1, -10, 0, 35)
+TargetBox.PlaceholderText = "Player Name to Warp"
+TargetBox.Text = ""
+TargetBox.BackgroundColor3 = Color3.fromRGB(50, 50, 60)
+TargetBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+TargetBox.Font = Enum.Font.SourceSans
+TargetBox.TextSize = 16
+TargetBox.Parent = Scroll
+
+createButton("Warp to Player", function()
+	local targetName = TargetBox.Text:lower()
+	for _, target in pairs(Players:GetPlayers()) do
+		if target ~= LocalPlayer and (target.Name:lower():find(targetName) or target.DisplayName:lower():find(targetName)) then
+			if target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+				RootPart.CFrame = target.Character.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3)
+				break
+			end
+		end
+	end
+end)
+
+-- 7. Warp Forward (Click/Dash Warp)
+createButton("Warp Forward (50 studs)", function()
+	if RootPart then
+		RootPart.CFrame = RootPart.CFrame * CFrame.new(0, 0, -50)
+	end
+end)
+
+-- Auto Re-bind character on Respawn
+LocalPlayer.CharacterAdded:Connect(function(newChar)
+	Character = newChar
+	Humanoid = Character:WaitForChild("Humanoid")
+	RootPart = Character:WaitForChild("HumanoidRootPart")
+	NoclipEnabled = false
+	WallClimbEnabled = false
+	InvisibleEnabled = false
+end)
